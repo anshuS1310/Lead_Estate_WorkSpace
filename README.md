@@ -1,26 +1,52 @@
-# Lead Workspace
+# Lead Estate
 
-A browser-based real-estate lead workspace for reviewing customer messages, extracting details, analyzing priority, and preparing a suggested reply.
+Lead Estate is an AI-assisted workspace for reviewing real-estate customer inquiries. It turns customer messages into organized lead records, highlights the evidence behind extracted details, and helps a salesperson decide what to follow up on next.
 
-## Before using or sharing it
+The project is a local-first pilot. Lead records are stored in the browser that created them; the application does not currently provide accounts or a shared database.
 
-- **Use fictional customer details during this pilot.** Google says content sent through the Gemini API free tier may be used to improve its products. See [Gemini API pricing and data use](https://ai.google.dev/gemini-api/docs/pricing).
-- Lead records and conversations are stored in the current browser only. There is no login, shared database, or cross-device sync. Clearing browser data can remove them; export backups regularly.
-- The public API uses best-effort per-instance request limiting. It is not a shared quota or access-control system.
-- Vercel Hobby is for personal, non-commercial use. Use an eligible paid plan for a business deployment; see [Vercel's Hobby plan](https://vercel.com/docs/plans/hobby) and [fair-use rules](https://vercel.com/docs/limits/fair-use-guidelines).
-- This pilot is not ready for storing real customer data or business-wide use. That requires suitable AI data terms, authentication, durable shared storage, and centralized abuse controls.
+## Capabilities
+
+- **Capture inquiries:** Start a lead from a customer message and review or edit the name, location, property requirements, budget, and buying timeline.
+- **Extract details with evidence:** Ask Gemini to suggest field values and show the matching text from the original message. AI suggestions remain editable and reviewable.
+- **Prioritize with an explainable score:** Code calculates a score from four factors and displays the evidence and reason for each factor. The model does not calculate the total.
+- **Review follow-up messages:** Add a later customer message to an existing lead, preview proposed field changes and a provisional analysis, then accept the changes or keep the existing fields.
+- **Prepare follow-up:** Review a suggested reply, next action, customer intent, concerns, missing details, and conflicts. The assistant can answer questions about the selected lead.
+- **Manage records:** Sort and filter leads, include or exclude messages in analysis, remove messages or leads, and import or export JSON backups.
+- **Use it on different screen sizes:** The workspace adapts for desktop and mobile layouts.
+
+## Prioritization rubric
+
+The score is a workflow aid, not a prediction that a customer will buy. It is calculated in code from supported customer messages and reviewed fields.
+
+| Factor | Maximum | How points are assigned |
+| --- | ---: | --- |
+| Buying timeline | 30 | 30 for up to one month, 24 for up to three months, 16 for up to six months, and 8 for a later stated date. Past or unsupported dates score 0. A viewing request alone is not treated as a purchase timeline. |
+| Budget clarity | 20 | Exact amounts and ranges no wider than 1.5× score 20; wider ranges score 8; ceilings score 15; floors score 8. Unsupported budgets score 0. |
+| Requirements | 15 | 5 points for each distinct supported category, capped at three categories: location, property type, size or rooms, and amenity. |
+| Buying signals | 35 | The analysis classifies the supported signal as none (0), options (10), engaged (22), or action (35). |
+
+Priority labels are **Hot** for 70–100, **Warm** for 30–69, and **Cold** for 0–29. When available, timeline scoring uses the source message's entry date as its starting point and compares the resulting date with the current date. The analysis records a rubric version so saved scores can be interpreted in context.
+
+## Technology
+
+- Next.js App Router and React
+- TypeScript
+- Tailwind CSS
+- Zustand for client-side workspace state
+- Google GenAI SDK for Gemini-powered extraction, analysis, and chat
+- Zod for request, response, and saved-record validation
+- Vitest and ESLint for tests and code checks
 
 ## Requirements
 
-- Node.js **24.x** and npm
-- A Google AI Studio project and Gemini API key
-- Git for the GitHub steps
+- Node.js 24.x and npm
+- A Google AI Studio project and Gemini API key for AI features
 
-The model defaults to `gemini-3.5-flash-lite`. You can change it with `GEMINI_MODEL`.
+The default model is `gemini-3.5-flash-lite`. The model can be changed with the `GEMINI_MODEL` environment variable.
 
-## Run locally on Windows
+## Run locally
 
-Open PowerShell in the repository folder (the folder containing `package.json`), then run:
+From the project root, install the locked dependencies and create a local environment file:
 
 ```powershell
 npm ci
@@ -28,71 +54,53 @@ if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
 notepad .env.local
 ```
 
-In `.env.local`, replace the placeholder with your **private** key:
+Set the values in `.env.local`:
 
-```text
-GEMINI_API_KEY=your_new_private_key
+```dotenv
+GEMINI_API_KEY=your_google_ai_studio_key
 GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
-Save the file, then start the app:
+Start the development server:
 
 ```powershell
 npm run dev
 ```
 
-Open <http://localhost:3000>. Stop the local server with **Ctrl+C** in that PowerShell window. `.env.local` is ignored by Git; never add a key to source code or a `NEXT_PUBLIC_` variable.
+Open <http://localhost:3000>. Stop the server with **Ctrl+C**.
 
-To run the production build locally instead:
+The Gemini key is read by server-side API routes. Keep it in `.env.local`; do not commit it or expose it through a `NEXT_PUBLIC_` variable. The repository's `.gitignore` excludes local environment files.
 
-```powershell
-npm run build
-npm run start
+## Available commands
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the development server. |
+| `npm run lint` | Run ESLint. |
+| `npm run test` | Run the Vitest suite once. |
+| `npx tsc --noEmit` | Check TypeScript types without emitting files. |
+| `npm run build` | Create an optimized production build. |
+| `npm run start` | Serve the production build locally; run `npm run build` first. |
+
+## Project layout
+
+```text
+app/                 Application UI and server API routes
+  api/analyze/       Analyze a lead and build its score
+  api/autofill/      Extract supported details from a message
+  api/chat/          Stream lead-specific assistant responses
+  api/review-update/ Preview a later message and proposed updates
+components/          Workspace, intake, analysis, chat, and UI components
+lib/                 Lead types, browser storage, prompts, validation,
+                     evidence checks, money parsing, and scoring
 ```
 
-## Upload this prepared project to GitHub
+## Data handling and current limitations
 
-The local Git repository is initialized on branch `main` and has a prepared first commit. Create an **empty private repository** on GitHub; do not initialize it with a README, license, or Git ignore file. Then, from this project folder, add its URL and push:
+- Leads, messages, drafts, analysis, and chat history are saved in the browser's local storage. They are not synchronized across browsers, devices, or team members. Clearing browser site data can remove them; export backups when needed.
+- AI requests send the selected lead content to Google's Gemini API. Review Google's current data terms before using customer information. Content submitted through unpaid Gemini API services may be used to improve Google products, so use fictional details for testing.
+- There is no sign-in, role-based access, shared server-side lead database, or centralized request quota. The API request limiting is best-effort and per server instance.
+- AI extraction and analysis can be wrong. Check the source excerpts, field changes, score reasons, conflicts, and suggested replies before relying on them.
+- The application does not send messages to customers or verify property inventory, availability, or appointment times.
 
-```powershell
-git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPOSITORY.git
-git push -u origin main
-```
-
-Replace the URL with the one GitHub shows for your repository. Check what is committed with `git status --short` and `git ls-files` before pushing. `.env.local`, `.next`, `node_modules`, and TypeScript build info are excluded; `.env.example`, source, and the lockfile are included.
-
-For later code changes, commit and push them to trigger a new deployment:
-
-```powershell
-git add .
-git commit -m "Describe your change"
-git push
-```
-
-## Deploy a personal preview on Vercel
-
-Vercel detects Next.js and reads the build settings from `package.json`, so this project does not need a custom build configuration. Follow Vercel's [Next.js deployment guide](https://vercel.com/docs/frameworks/full-stack/nextjs):
-
-1. Sign in to Vercel with GitHub and import the repository you just pushed.
-2. Keep the root directory at `.` and the detected Next.js build settings. The project targets Node `24.x`.
-3. Before deploying, open **Project Settings → Environment Variables**. Add `GEMINI_API_KEY` with a newly issued key and `GEMINI_MODEL` with `gemini-3.5-flash-lite`. Do not prefix either name with `NEXT_PUBLIC_`.
-4. Deploy and open the generated URL. Check the deployment build logs if it fails.
-5. Push later changes to GitHub; Vercel builds and deploys the connected branch automatically.
-
-Use Vercel Hobby only for a personal, non-commercial preview. For use by a real-estate business, choose a hosting plan whose terms allow commercial use. Render's free web services are also preview-only and can sleep after inactivity; see [Render's free-service limits](https://render.com/docs/free).
-
-## App behavior
-
-- Autofill suggests customer fields with supporting excerpts; review them before analysis.
-- Analysis calculates the score in code from Timeline (30), Budget clarity (20), Requirement specificity (15), and Buying signals (35). The score is a prioritization estimate, not a sale prediction.
-- The workspace supports follow-up messages, reviewable field updates, suggested replies, and import/export backups.
-- Nothing is sent to customers automatically. Review all extracted details and replies.
-
-## Checks
-
-```powershell
-npm run lint
-npm run test
-npx tsc --noEmit
-npm run build
-```
+This pilot is intended for evaluation with fictional data. A real customer-data workflow requires appropriate AI data terms, authentication, durable shared storage, and centralized access and abuse controls.
