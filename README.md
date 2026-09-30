@@ -1,5 +1,7 @@
 # Lead Estate
 
+**Deployed**: https://lead-estate-work-space.vercel.app/
+
 Lead Estate is an AI-assisted workspace for reviewing real-estate customer inquiries. It turns customer messages into organized lead records, highlights the evidence behind extracted details, and helps a salesperson decide what to follow up on next.
 
 The project is a local-first pilot. Lead records are stored in the browser that created them; the application does not currently provide accounts or a shared database.
